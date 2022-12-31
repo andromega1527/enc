@@ -7,8 +7,9 @@ fi
 
 mainarg=$(echo $@ | awk '{print $NF}')
 finalstr=
+is_html_enc=false
 
-while getopts ":t:" opt; do
+while getopts ":t:z:" opt; do
     case "${opt}" in
         t)
             encstr=$(xxd -u -ps <(echo -n "$mainarg"))
@@ -24,11 +25,13 @@ while getopts ":t:" opt; do
                 html-dec) #TODO
                     prefixchar="&#"
                     sufixchar=";"
+                    is_html_enc=true
                     # TODO
                     ;;
                 html-hex)
                     prefixchar="&#x"
                     sufixchar=";"
+                    is_html_enc=true
                     ;;
                 *)
                     echo error: invalid argument
@@ -39,6 +42,15 @@ while getopts ":t:" opt; do
             for (( i=0; i<${#encstr}; i+=2 )); do
                 finalstr+=$(echo "$prefixchar${encstr:$i:2}$sufixchar")
             done
+            ;;
+        z)
+            zeros=""
+            if $is_html_enc; then
+                for ((i=0; i<"$OPTARG"; i++)); do
+                    zeros="$zeros"0
+                done
+                finalstr=$(echo $finalstr | sed -E "s/(&#x|&#)/\1$zeros/g")
+            fi
             ;;
         :)
             echo error: missing required argument in option
