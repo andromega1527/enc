@@ -5,9 +5,9 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-mainarg=$(echo $@ | awk '{print $NF}')
+mainarg=$(echo "$@" | awk '{print $NF}')
 finalstr=
-is_html_enc=false
+is_enable_zl=false
 
 while getopts ":t:z:" opt; do
     case "${opt}" in
@@ -25,13 +25,21 @@ while getopts ":t:z:" opt; do
                 html-dec) #TODO
                     prefixchar="&#"
                     sufixchar=";"
-                    is_html_enc=true
+                    is_enable_zl=true
                     # TODO
                     ;;
                 html-hex)
                     prefixchar="&#x"
                     sufixchar=";"
-                    is_html_enc=true
+                    is_enable_zl=true
+                    ;;
+                unicode)
+                    prefixchar="\u00"
+                    ;;
+                unicode-es6)
+                    prefixchar="\u{"
+                    sufixchar="}"
+                    is_enable_zl=true
                     ;;
                 *)
                     echo error: invalid argument
@@ -49,7 +57,7 @@ while getopts ":t:z:" opt; do
                 for ((i=0; i<"$OPTARG"; i++)); do
                     zeros="$zeros"0
                 done
-                finalstr=$(echo $finalstr | sed -E "s/(&#x|&#)/\1$zeros/g")
+                finalstr=$(echo $finalstr | sed -E "s/(&#x|&#|\\u\{)/\1$zeros/g")
             fi
             ;;
         :)
