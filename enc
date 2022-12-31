@@ -1,0 +1,56 @@
+#!/usr/bin/bash
+
+if [ $# -eq 0 ]; then
+    echo error: missing arguments
+    exit 1
+fi
+
+mainarg=$(echo $@ | awk '{print $NF}')
+finalstr=
+
+while getopts ":t:" opt; do
+    case "${opt}" in
+        t)
+            encstr=$(xxd -u -ps <(echo -n "$mainarg"))
+            prefixchar=
+            sufixchar=
+            case "$OPTARG" in
+                url)
+                    prefixchar="%"
+                    ;;
+                2url)
+                    prefixchar="%25"
+                    ;;
+                html-dec) #TODO
+                    prefixchar="&#"
+                    sufixchar=";"
+                    # TODO
+                    ;;
+                html-hex)
+                    prefixchar="&#x"
+                    sufixchar=";"
+                    ;;
+                *)
+                    echo error: invalid argument
+                    exit 4
+                ;;
+            esac
+            
+            for (( i=0; i<${#encstr}; i+=2 )); do
+                finalstr+=$(echo "$prefixchar${encstr:$i:2}$sufixchar")
+            done
+            ;;
+        :)
+            echo error: missing required argument in option
+            exit 2
+            ;;
+        ?)
+            echo error: non-existent option
+            exit 3
+            ;;
+    esac
+done
+
+echo "$finalstr"
+
+exit 0
