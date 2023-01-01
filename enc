@@ -8,6 +8,7 @@ fi
 mainarg=$(echo "$@" | awk '{print $NF}')
 finalstr=
 is_enable_zl=false
+enc_type="hex"
 
 while getopts ":t:z:" opt; do
     case "${opt}" in
@@ -15,6 +16,8 @@ while getopts ":t:z:" opt; do
             encstr=$(xxd -u -ps <(echo -n "$mainarg"))
             prefixchar=
             sufixchar=
+            char=
+            is_sql_char=false
             case "$OPTARG" in
                 url)
                     prefixchar="%"
@@ -22,11 +25,11 @@ while getopts ":t:z:" opt; do
                 2url)
                     prefixchar="%25"
                     ;;
-                html-dec) #TODO
+                html-dec)
                     prefixchar="&#"
                     sufixchar=";"
                     is_enable_zl=true
-                    # TODO
+                    enc_type="dec"
                     ;;
                 html-hex)
                     prefixchar="&#x"
@@ -41,6 +44,32 @@ while getopts ":t:z:" opt; do
                     sufixchar="}"
                     is_enable_zl=true
                     ;;
+                hex)
+                    prefixchar="\x"
+                    ;;
+                sql)
+                    prefixchar="0x"
+                    ;;
+                octal)
+                    prefixchar="\\"
+                    enc_type="octal"
+                    ;;
+                css)
+                    prefixchar="\00"
+                    ;;
+                html-entity) #TODO
+                    ;;
+                sql-char-hex)
+                    prefixchar="CHAR(0x"
+                    sufixchar=")"
+                    is_sql_char=true
+                    ;;
+                sql-char-dec)
+                    prefixchar="CHAR("
+                    sufixchar=")"
+                    enc_type="dec"
+                    is_sql_char=true
+                    ;;
                 *)
                     echo error: invalid argument
                     exit 4
@@ -48,7 +77,22 @@ while getopts ":t:z:" opt; do
             esac
             
             for (( i=0; i<${#encstr}; i+=2 )); do
-                finalstr+=$(echo "$prefixchar${encstr:$i:2}$sufixchar")
+                char="${encstr:$i:2}"
+                if [ "$enc_type" != "hex" ]; then
+                    case "$enc_type" in
+                        octal)
+                            char=$(printf "%o" $((16#"$char")))
+                            ;;
+                        dec)
+                            char=$(printf "%d" $((16#"$char")))
+                            ;;
+                    esac
+                fi
+                finalstr+=$(echo "$prefixchar$char$sufixchar")
+                
+                if "$is_sql_char" && [ "$i" -lt $((${#encstr} - 2)) ]; then
+                    finalstr+="+"
+                fi
             done
             ;;
         z)
